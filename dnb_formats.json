@@ -142,7 +142,7 @@
       "INDIVIDUAL_ID",
       "DUNS_ID",
       "DUNS",
-      "TRUSTkrEDDUNS",
+      "TRUSTEDDUNS",
       "SMSACODE",
       "PRIMARYMRCCODE",
       "MRCCODES",
