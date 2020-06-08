@@ -46,8 +46,7 @@ optional arguments:
 ### Prerequisites
 
 - python 3.6 or higher
-- Senzing API version 1.7 or higher
-- [Senzing/mapper-base](https://github.com/Senzing/mapper-base)
+- Senzing API version 1.15 or higher
 
 ### Installation
 
@@ -81,17 +80,6 @@ python3 G2ConfigTool.py <path-to-file>/dnb_config_updates.json
 ```
 
 This will step you through the process of adding the data sources, entity types, features, attributes and other settings needed to load this watch list data into Senzing. After each command you will see a status message saying "success" or "already exists".  For instance, if you run the script twice, the second time through they will all say "already exists" which is OK.
-
-Configuration updates include:
-
-- addDataSource **DNB-COMPANY** used when when mapping companies from CMPCVF json files
-- addDataSource **DNB-PRINCIPLE** used when when mapping principles from CMPCVF json files
-- addDataSource **DNB-OWNER** used when when mapping owners from UBO csv files
-- addDataSource **DNB-CONTACT** used when when mapping contacts from GCA csv files
-- addEntityType **PERSON**
-- addEntityType **ORGANIZATION**
-- add features and attributes for ...
-  - **DNB_OWNER_ID** This is used to help prevent owners from resolving to each other and so that you can search on it.
 
 ### Running the mapper
 
