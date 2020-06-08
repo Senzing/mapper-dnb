@@ -11,18 +11,6 @@ import csv
 import json
 import random
 
-#--import the base mapper library and variants
-try: 
-    import base_mapper
-except: 
-    print('')
-    print('Please export PYTHONPATH=$PYTHONPATH:<path to mapper-base project>')
-    print('')
-    sys.exit(1)
-baseLibrary = base_mapper.base_library(os.path.abspath(base_mapper.__file__).replace('base_mapper.py','base_variants.json'))
-if not baseLibrary.initialized:
-    sys.exit(1)
-
 #----------------------------------------
 def pause(question='PRESS ENTER TO CONTINUE ...'):
     """ pause for debug purposes """
@@ -76,7 +64,7 @@ def getNextRow(inputFileReader, fileColumns):
 def format_UBO(rowData):
 
     #--data corrections / updates
-    if ':' in rowData['SUBJ_DUNS']:   #--they prepended file name to first column like this: UBO_00_0819.txt:021475652
+    if ':' in rowData['SUBJ_DUNS']:   #--sometimes they prepended file name to first column like this: UBO_00_0819.txt:021475652
         rowData['SUBJ_DUNS'] = rowData['SUBJ_DUNS'][rowData['SUBJ_DUNS'].find(':') + 1:]
 
     if rowData['BENF_TYP_CD'] == '119':
@@ -101,8 +89,8 @@ def format_UBO(rowData):
 
     #--affiliate them to the subject country
     if rowData['SUBJ_CTRY_CD']:
-        jsonData['AFFILIATED_COUNTRY'] = rowData['SUBJ_CTRY_CD']
-        updateStat(recordType, 'AFFILIATED_COUNTRY', rowData['SUBJ_CTRY_CD'])
+        jsonData['COUNTRY_OF_ASSSOCIATION'] = rowData['SUBJ_CTRY_CD']
+        updateStat(recordType, 'COUNTRY_OF_ASSSOCIATION', rowData['SUBJ_CTRY_CD'])
 
     #--address
     addressData = {}
@@ -150,9 +138,9 @@ def format_UBO(rowData):
 
     #--relate them to the company they own and use their group association for matching
     if rowData['SUBJ_DUNS']:
-        #jsonData['RELATIONSHIP_TYPE'] = 'OWNER_OF'
-        #jsonData['RELATIONSHIP_KEY'] = rowData['SUBJ_DUNS']
-        #updateStat(recordType, 'RELATIONSHIP')
+        jsonData['REL_POINTER_DOMAIN'] = 'DUNS'
+        jsonData['REL_POINTER_KEY'] = rowData['SUBJ_DUNS']
+        jsonData['REL_POINTER_ROLE'] = 'beneficialOwner'
         jsonData['GROUP_ASSN_ID_TYPE'] = 'DUNS'
         jsonData['GROUP_ASSN_ID_NUMBER'] = rowData['SUBJ_DUNS']
         updateStat(recordType, 'GROUP_ASSN_ID', rowData['SUBJ_DUNS'])
@@ -167,6 +155,12 @@ def format_UBO(rowData):
     if rowData['DIRC_OWRP_PCTG']: 
         jsonData['DIRECT_OWNERSHIP_PERCENT'] = float(rowData['DIRC_OWRP_PCTG'])
         updateStat(recordType, 'DIRECT_OWNERSHIP_PERCENT', rowData['DIRC_OWRP_PCTG'])
+    if rowData['IDIR_OWRP_PCTG']: 
+        jsonData['INDIRECT_OWNERSHIP_PERCENT'] = float(rowData['IDIR_OWRP_PCTG'])
+        updateStat(recordType, 'INDIRECT_OWNERSHIP_PERCENT', rowData['IDIR_OWRP_PCTG'])
+    if rowData['BENF_OWRP_PCTG']: 
+        jsonData['BENEFICIAL_OWNERSHIP_PERCENT'] = float(rowData['BENF_OWRP_PCTG'])
+        updateStat(recordType, 'BENEFICIAL_OWNERSHIP_PERCENT', rowData['BENF_OWRP_PCTG'])
 
     return [jsonData]  #--must return a list even though only 1
 
@@ -182,6 +176,10 @@ def format_GCA(rowData):
     jsonData['RECORD_ID'] = rowData['CONTACT_ID']
     jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
+
+    if rowData['INDIVIDUAL_ID']:
+        jsonData['DNB_CONTACT_ID'] = rowData['INDIVIDUAL_ID']
+        updateStat(recordType, 'DNB_CONTACT_ID', rowData['INDIVIDUAL_ID'])
 
     #--map the name
     fullName = ''
@@ -230,10 +228,10 @@ def format_GCA(rowData):
         jsonData['PRIMARY_ADDR_STATE'] = rowData['GCA_STATEPROVINCECODE']
         fullAddress += (' ' + rowData['GCA_STATEPROVINCECODE'])
     if rowData['GCA_POSTALCODE']:
-        jsonData['PRIMARY_POSTAL_CODE'] = rowData['GCA_POSTALCODE']
+        jsonData['PRIMARY_ADDR_POSTAL_CODE'] = rowData['GCA_POSTALCODE']
         fullAddress += (' ' + rowData['GCA_POSTALCODE'])
     if rowData['GCA_COUNTRYCODE']:
-        jsonData['PRIMARY_COUNTRY'] = rowData['GCA_COUNTRYCODE']
+        jsonData['PRIMARY_ADDR_COUNTRY'] = rowData['GCA_COUNTRYCODE']
         fullAddress += (' ' + rowData['GCA_COUNTRYCODE'])
     fullAddress = fullAddress.strip()
     if fullAddress:
@@ -256,9 +254,9 @@ def format_GCA(rowData):
 
     #--relate them to the company they own and use their group association for matching
     if rowData['DUNS_ID']:
-        #jsonData['RELATIONSHIP_TYPE'] = 'CONTACT'
-        #jsonData['RELATIONSHIP_KEY'] = rowData['DUNS_ID']
-        #updateStat(recordType, 'RELATIONSHIP')
+        jsonData['REL_POINTER_DOMAIN'] = 'DUNS'
+        jsonData['REL_POINTER_KEY'] = rowData['DUNS_ID']
+        jsonData['REL_POINTER_ROLE'] = 'Contact'
         jsonData['GROUP_ASSN_ID_TYPE'] = 'DUNS'
         jsonData['GROUP_ASSN_ID_NUMBER'] = rowData['DUNS_ID']
         updateStat(recordType, 'GROUP_ASSN_ID', rowData['DUNS_ID'])
@@ -274,34 +272,68 @@ def format_GCA(rowData):
     return [jsonData]  #--must return a list even though only 1
 
 #----------------------------------------
-def mapJsonAddr(addrData, usageType):
+def mapJsonAddr(addrData, usageType, recordID = None):
+    checkit = False
     jsonAddr = {}
     addrType = usageType + '_'
     fullAddress = ''
     if 'streetAddress' in addrData and 'line1' in addrData['streetAddress'] and addrData['streetAddress']['line1']:
-        jsonAddr[addrType + 'ADDR_LINE1'] = addrData['streetAddress']['line1']
-        fullAddress += (' ' + addrData['streetAddress']['line1'])
-    if 'streetAddress' in addrData and 'line2' in addrData['streetAddress'] and addrData['streetAddress']['line2']:
-        jsonAddr[addrType + 'ADDR_LINE2'] = addrData['streetAddress']['line2']
-        fullAddress += (' ' + addrData['streetAddress']['line2'])
+        addrValue = addrData['streetAddress']['line1']
+        jsonAddr[addrType + 'ADDR_LINE1'] = addrValue
+        fullAddress = addrValue
+        if 'line2' in addrData['streetAddress'] and addrData['streetAddress']['line2']:
+            addrValue = addrData['streetAddress']['line2']
+            jsonAddr[addrType + 'ADDR_LINE2'] = addrValue
+            fullAddress = (fullAddress + ' ' + addrValue).strip()
+        if 'line3' in addrData['streetAddress'] and addrData['streetAddress']['line3']:
+            addrValue = addrData['streetAddress']['line3']
+            jsonAddr[addrType + 'ADDR_LINE3'] = addrValue
+            fullAddress = (fullAddress + ' ' + addrValue).strip()
+        if 'line4' in addrData['streetAddress'] and addrData['streetAddress']['line4']:
+            addrValue = addrData['streetAddress']['line4']
+            jsonAddr[addrType + 'ADDR_LINE4'] = addrValue
+            fullAddress = (fullAddress + ' ' + addrValue).strip()
+
+    #--never seen this populated, though have seen po boxes on line1
+    if 'postOfficeBox' in addrData and 'postOfficeBoxNumber' in addrData['postOfficeBox'] and addrData['postOfficeBoxNumber']['postOfficeBoxNumber']:
+        addrValue = 'Post Office Box ' + addrData['postOfficeBoxNumber']['postOfficeBoxNumber']
+        jsonAddr[addrType + 'ADDR_LINE1'] = addrValue
+        fullAddress = 'Post Office Box ' + addrValue
+
     if 'addressLocality' in addrData and 'name' in addrData['addressLocality'] and addrData['addressLocality']['name']:
-        jsonAddr[addrType + 'ADDR_CITY'] = addrData['addressLocality']['name']
-        fullAddress += (' ' + addrData['addressLocality']['name'])
+        addrValue = addrData['addressLocality']['name']
+        jsonAddr[addrType + 'ADDR_CITY'] = addrValue
+        fullAddress = (fullAddress + ' ' + addrValue).strip()
+
+    addrValue = ''
     if 'addressRegion' in addrData and 'abbreviatedName' in addrData['addressRegion'] and addrData['addressRegion']['abbreviatedName']:
-        jsonAddr[addrType + 'ADDR_STATE'] = addrData['addressRegion']['abbreviatedName']
-        fullAddress += (' ' + addrData['addressRegion']['abbreviatedName'])
+        addrValue = addrData['addressRegion']['abbreviatedName']
     elif 'addressRegion' in addrData and 'name' in addrData['addressRegion'] and addrData['addressRegion']['name']:
-        jsonAddr[addrType + 'ADDR_STATE'] = addrData['addressRegion']['name']
-        fullAddress += (' ' + addrData['addressRegion']['name'])
+        addrValue = addrData['addressRegion']['name']
+    if addrValue:
+        jsonAddr[addrType + 'ADDR_STATE'] = addrValue
+        fullAddress = (fullAddress + ' ' + addrValue).strip()
+
     if 'postalCode' in addrData and addrData['postalCode']:
-        jsonAddr[addrType + 'ADDR_POSTAL_CODE'] = addrData['postalCode']
-        fullAddress += (' ' + addrData['postalCode'])
+        addrValue = addrData['postalCode']
+        jsonAddr[addrType + 'ADDR_POSTAL_CODE'] = addrValue
+        fullAddress = (fullAddress + ' ' + addrValue).strip()
+
+    addrValue = ''
     if 'addressCountry' in addrData and 'isoAlpha2Code' in addrData['addressCountry'] and addrData['addressCountry']['isoAlpha2Code']:
-        jsonAddr[addrType + 'ADDR_COUNTRY'] = addrData['addressCountry']['isoAlpha2Code']
-        fullAddress += (' ' + addrData['addressCountry']['isoAlpha2Code'])
+        addrValue = addrData['addressCountry']['isoAlpha2Code']
     elif 'addressCountry' in addrData and 'name' in addrData['addressCountry'] and addrData['addressCountry']['name']:
-        jsonAddr[addrType + 'ADDR_COUNTRY'] = addrData['addressCountry']['name']
-        fullAddress += (' ' + addrData['addressCountry']['name'])
+        addrValue = addrData['addressCountry']['name']
+    if addrValue:
+        jsonAddr[addrType + 'ADDR_COUNTRY'] = addrValue
+        fullAddress = (fullAddress + ' ' + addrValue).strip()
+
+    if checkit:
+        print(json.dumps(addrData, indent=4))
+        print('-' * 40)
+        print(json.dumps(jsonAddr, indent=4))
+
+
     return fullAddress, jsonAddr
 
 #----------------------------------------
@@ -312,6 +344,7 @@ def format_CMPCVF(rowData):
     #--data corrections / updates
     rowData = rowData['organization']
     recordType = 'ORGANIZATION'
+    statCategory = 'DNB_COMPANY'
 
     #--json header
     jsonData = {}
@@ -321,113 +354,185 @@ def format_CMPCVF(rowData):
     jsonData['RECORD_TYPE'] = recordType
 
     jsonData['DUNS_NUMBER'] = rowData['duns']
-    updateStat(recordType, 'DUNS_NUMBER', rowData['duns'])
-
-    #--map the name
+    updateStat(statCategory, 'DUNS_NUMBER', rowData['duns'])
     thisDuns = rowData['duns']
+
+    #--map the names
     bestName = ''
-    if 'primaryName' in rowData and rowData['primaryName']:
-        bestName = rowData['primaryName']
-        jsonData['PRIMARY_NAME_ORG'] = rowData['primaryName']
-        updateStat(recordType, 'NAME_ORG_PRIMARY', rowData['primaryName'])
-    #"registeredName": null,
+    nameFields = {}
+    nameFields['primaryName'] = 'PRIMARY'
+    nameFields['registeredName'] = 'REGISTERED'
+    for nameField in nameFields.keys():
+        if nameField in rowData and rowData[nameField]:
+            nameType = nameFields[nameField]
+            jsonData[nameType + '_NAME_ORG'] = rowData[nameField]
+            updateStat(statCategory, 'NAME_ORG_' + nameType, rowData[nameField])
+            if nameType == 'PRIMARY':
+                bestName = rowData[nameField]
 
-    #--map the address
-    if 'primaryAddress' in rowData and rowData['primaryAddress']:
-        addrType = 'PRIMARY'
-        fullAddress, jsonAddr = mapJsonAddr(rowData['primaryAddress'], addrType)
-        if fullAddress:
-            jsonData.update(jsonAddr)
-            updateStat(recordType, addrType + 'ADDRESS', fullAddress)
+    thisList = []
+    for record in rowData['formerPrimaryNames'] if 'formerPrimaryNames' in rowData else []:
+        thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
+        updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
+    for record in rowData['formerRegisteredNames'] if 'formerRegisteredNames' in rowData else []:
+        thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
+        updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
+    for record in rowData['tradeStyleNames'] if 'tradeStyleNames' in rowData else []:
+        thisList.append({'NAME_TYPE': 'TRADE', 'NAME_ORG': record['name']})
+        updateStat(statCategory, 'NAME_ORG_' + 'TRADE', record['name'])
+    if thisList:
+        jsonData['ADDITIONAL_NAMES'] = thisList
 
+    #--map the addresses
+    addrFields = {}
+    addrFields['primaryAddress'] = 'PRIMARY'
+    addrFields['registeredAddress'] = 'REGISTERED'
+    addrFields['mailingAddress'] = 'MAILING'
+    addrFields['formerRegisteredAddress'] = 'FORMER'
+    for addressField in addrFields.keys():
+        if addressField in rowData and rowData[addressField]:
+            addrType = addrFields[addressField]
+            fullAddress, jsonAddr = mapJsonAddr(rowData[addressField], addrType, thisDuns)
+            if fullAddress:
+                jsonData.update(jsonAddr)
+                updateStat(statCategory, 'ADDRESS_' + addrType, fullAddress)
 
+    #--phone numbers
+    thisList = []
+    for record in rowData['telephone'] if 'telephone' in rowData else []:
+        phoneNumber = '+' + record['isdCode'] + ' ' if 'isdCode' in record and record['isdCode'] else '' 
+        phoneNumber += record['telephoneNumber']
+        thisList.append({"PHONE_NUMBER": phoneNumber})
+        updateStat(statCategory, 'PHONE_NUMBER', phoneNumber)
+    if thisList:
+        jsonData['TELEPHONES'] = thisList
 
-    #--other things to consider adding ...
-    #--"minorTownName": null,
-    #--"postOfficeBox": {},
-    #--"latitude": 26.662361,
-    #--"longitude": -80.112527,
-    #--"geographicalPrecision": {
-    #--"description": "Street Address Centroid",
-    #--"dnbCode": 30257
-    #--},
-    #--"isRegisteredAddress": false,
-    #--"locationOwnership": {},
-    #--"congressionalDistricts": [],
-    #--"isResidentialAddress": null
-    #--},
-    #--"registeredAddress": {},
-    #--"mailingAddress": {},
-    #--"formerRegisteredAddresses": [],
-    #--"registrationNumbers": [],
-    #--"telephone": [
-    #--  {
-    #--    "telephoneNumber": "5614333976",
-    #--    "isdCode": "1",
-    #--    "isUnreachable": false
-    #--  }
-    #--],
-    #--"websiteAddress": [],
-    #--"email": []
-    #--"industryCodes": [
-    #--  {
-    #--    "code": "722513",
-    #--    "description": "Limited-Service Restaurants",
-    #--    "typeDescription": "North American Industry Classification System 2017",
-    #--    "typeDnBCode": 30832,
-    #--    "priority": 1
-    #--  },
-    #--"incorporatedDate": null,
-    #--"startDate": "2004",
-    #--"primaryName": "Carribbean Spotlight",
-    #--"controlOwnershipDate": "2004",
-    #--"businessEntityType": {},
-    #--"legalForm": {},
-    #--"controlOwnershipType": {},
-    #--"franchiseOperationType": {},
+    #--website addresses
+    thisList = []
+    for record in rowData['websiteAddress'] if 'websiteAddress' in rowData else []:
+        thisList.append({"WEBSITE_ADDRESS": record['url']})
+        updateStat(statCategory, 'WEBSITE_ADDRESS', record['url'])
+    if thisList:
+        jsonData['WEBSITES'] = thisList
 
-    #--link to parents (disabled for now)
-    if False: #--'corporateLinkage' in rowData and rowData['corporateLinkage']:
-        print('thisDuns', thisDuns, bestName)
-        found = False
-        if 'globalUltimate' in rowData['corporateLinkage'] and 'duns' in rowData['corporateLinkage']['globalUltimate']:
-            found = True
-            globalDuns = rowData['corporateLinkage']['globalUltimate']['duns']
-            globalName = rowData['corporateLinkage']['globalUltimate']['primaryName'] if 'primaryName' in rowData['corporateLinkage']['globalUltimate'] else 'n/a'
-            print('globalDuns', globalDuns, globalName) 
-        if 'domesticUltimate' in rowData['corporateLinkage'] and 'duns' in rowData['corporateLinkage']['domesticUltimate']:
-            found = True
-            domesticDuns = rowData['corporateLinkage']['domesticUltimate']['duns']
-            domesticName = rowData['corporateLinkage']['domesticUltimate']['primaryName'] if 'primaryName' in rowData['corporateLinkage']['domesticUltimate'] else 'n/a'
-            print('domesticDuns', domesticDuns, domesticName) 
-        if 'parent' in rowData['corporateLinkage'] and 'duns' in rowData['corporateLinkage']['parent']:
-            found = True
-            parentDuns = rowData['corporateLinkage']['parent']['duns']
-            parentName = rowData['corporateLinkage']['parent']['primaryName'] if 'primaryName' in rowData['corporateLinkage']['parent'] else 'n/a'
-            print('parentDuns', parentDuns, parentName) 
-        if 'headquarter' in rowData['corporateLinkage'] and 'duns' in rowData['corporateLinkage']['headquarter']:
-            found = True
-            headquarterDuns = rowData['corporateLinkage']['headquarter']['duns']
-            headquarterName = rowData['corporateLinkage']['headquarter']['primaryName'] if 'primaryName' in rowData['corporateLinkage']['headquarter'] else 'n/a'
-            print('headquarterDuns', headquarterDuns, headquarterName) 
+    #--email addresses
+    thisList = []
+    for record in rowData['email'] if 'email' in rowData else []:
+        thisList.append({"EMAIL_ADDRESS": record['address']})
+        updateStat(statCategory, 'EMAIL_ADDRESS', record['address'])
+    if thisList:
+        jsonData['EMAILS'] = thisList
 
-        if not found:
-            print(rowData['corporateLinkage'])
-        pause('-----')
+    #--other ID numbers
+    thisList = []
+    for record in rowData['registrationNumbers'] if 'registrationNumbers' in rowData else []:
+        if record['typeDescription'] == 'Federal Taxpayer Identification Number (US)':
+            thisList.append({"TAX_ID_NUMBER": record['registrationNumber']})
+            thisList.append({"TAX_ID_COUNTRY": 'US'})
+            updateStat(statCategory, 'TAX_ID:' + record['typeDescription'], record['registrationNumber'])
+        else:
+            thisList.append({"OTHER_ID_TYPE": record['typeDescription']})
+            thisList.append({"OTHER_ID_NUMBER": record['registrationNumber']})
+            updateStat(statCategory, 'OTHER_ID:' + record['typeDescription'], record['registrationNumber'])
+    if thisList:
+        jsonData['OTHER_IDS'] = thisList
+
+    #--industry codes
+    thisList = []
+    for record in rowData['industryCodes'] if 'industryCodes' in rowData else []:
+        codeData = '%s (%s)' % (record['code'], record['description'])
+        thisList.append({"INDUSTRY_CODE_VALUE": codeData, "INDUSTRY_CODE_TYPE": record['typeDescription']})
+        updateStat(statCategory, 'INDUSTRY_CODE:' + record['typeDescription'], codeData)
+    if thisList:
+        jsonData['INDUSTRY_CODES'] = thisList
+
+    #--non resolving attributes
+    if 'dunsControlStatus' in rowData and 'operatingStatus' in rowData['dunsControlStatus'] and 'description' in rowData['dunsControlStatus']['operatingStatus'] and rowData['dunsControlStatus']['operatingStatus']['description']:
+        jsonData['OPERATING_STATUS'] = rowData['dunsControlStatus']['operatingStatus']['description']
+        updateStat(statCategory, 'OPERATING_STATUS', jsonData['OPERATING_STATUS'])
+    if 'businessEntityType' in rowData and 'description' in rowData['businessEntityType'] and rowData['businessEntityType']['description']:
+        jsonData['BUSINESS_TYPE'] = rowData['businessEntityType']['description']
+        updateStat(statCategory, 'OPERATING_STATUS', jsonData['BUSINESS_TYPE'])
+    if 'legalForm' in rowData and 'description' in rowData['legalForm'] and rowData['legalForm']['description']:
+        jsonData['LEGAL_FORM'] = rowData['businessEntityType']['description']
+        updateStat(statCategory, 'LEGAL_FORM', jsonData['LEGAL_FORM'])
+
+    if 'incorporatedDate' in rowData and rowData['incorporatedDate']:
+        jsonData['INCORPORATED_DATE'] = rowData['incorporatedDate']
+        updateStat(statCategory, 'INCORPORATED_DATE', jsonData['INCORPORATED_DATE'])
+
+    if 'startDate' in rowData and rowData['startDate']:
+        jsonData['START_DATE'] = rowData['startDate']
+        updateStat(statCategory, 'START_DATE', jsonData['START_DATE'])
+
+    #--so others can link to this entity
+    jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
+    jsonData['REL_ANCHOR_KEY'] = thisDuns
+
+    #--add parent entities and their relationships
+    if 'corporateLinkage' in rowData:
+        relationships = []
+        parentTags = {}
+        parentTags['globalUltimate'] = 'Global Parent'
+        parentTags['domesticUltimate'] = 'Ultimate Parent'
+        parentTags['parent'] = 'Direct Parent'
+        parentTags['headquarter'] = 'Headquarters'
+        for parentTag in parentTags.keys():
+            if parentTag in rowData['corporateLinkage'] and rowData['corporateLinkage'][parentTag] and rowData['corporateLinkage'][parentTag]['duns'] != thisDuns:
+                rowData1 = rowData['corporateLinkage'][parentTag]
+                jsonData1 = {}
+                jsonData1['DATA_SOURCE'] = 'DNB-PARENT'
+                jsonData1['ENTITY_TYPE'] = 'ORGANIZATION'
+                jsonData1['RECORD_ID'] = rowData1['duns']
+                updateStat('PARENT', parentTag)
+                jsonData1['DUNS_NUMBER'] = rowData1['duns']
+                jsonData1['REL_ANCHOR_DOMAIN'] = 'DUNS'
+                jsonData1['REL_ANCHOR_KEY'] = rowData1['duns']
+                if 'primaryName' in rowData1 and rowData1['primaryName']:
+                    jsonData1['NAME_ORG'] = rowData1['primaryName']
+                    updateStat('PARENT', parentTag, rowData1['primaryName'])
+                if 'primaryAddress' in rowData1 and rowData1['primaryAddress']:
+                    addrType = 'PRIMARY'
+                    fullAddress, jsonAddr = mapJsonAddr(rowData1['primaryAddress'], addrType)
+                    if fullAddress:
+                        jsonData1.update(jsonAddr)
+                        updateStat('PARENT', 'ADDRESS+' + addrType, fullAddress)
+                if jsonData1 not in jsonList:
+                    jsonList.append(jsonData1)
+
+                relationship = {}
+                relationship['REL_POINTER_DOMAIN'] = 'DUNS'
+                relationship['REL_POINTER_KEY'] = rowData1['duns']
+                relationship['REL_POINTER_ROLE'] = parentTags[parentTag]
+                relationships.append(relationship)
+        if relationships:
+            jsonData['RELATIONSHIPS'] = relationships
 
     #--current and most senior executives
     principleList = []
     if 'mostSeniorPrincipals' in rowData and rowData['mostSeniorPrincipals']:
-        principleList += rowData['mostSeniorPrincipals']
+        for rowData1 in rowData['mostSeniorPrincipals']:
+            rowData1['principleType'] = 'Senior Principle'
+            principleList.append(rowData1)
     if 'currentPrincipals' in rowData and rowData['currentPrincipals']:
-        principleList += rowData['currentPrincipals']
+        for rowData1 in rowData['currentPrincipals']:
+            rowData1['principleType'] = 'Current Principle'
+            try: principleList.append(rowData1)
+            except: print(rowData1)
+
+    principleCnt = 0
     for rowData1 in principleList:
-        recordType1 = 'PERSON' if rowData1['subjectType'] == 'Individual' else 'GENERIC'
-        updateStat(recordType1, rowData1['subjectType'])
+        if not rowData1['fullName'] and not rowData1['familyName']:
+            continue
+        principleCnt += 1
+
+        recordType1 = 'PERSON'
+        statCategory = 'PRINCIPLE'
+        updateStat(statCategory, 'subjectType', rowData1['subjectType'] if 'subjectType' in rowData1 else 'missing')
 
         jsonData1 = {}
         jsonData1['DATA_SOURCE'] = 'DNB-PRINCIPLE'
-        #--jsonData1['RECORD_ID'] = #--there is no key, let G2 hash it)
+        jsonData1['RECORD_ID'] = '%s-PR-%s' % (thisDuns, principleCnt)
         jsonData1['ENTITY_TYPE'] = recordType1
         jsonData1['RECORD_TYPE'] = recordType1
 
@@ -448,50 +553,51 @@ def format_CMPCVF(rowData):
             fullName += (' ' + rowData1['nameSuffix'])
             jsonData1['PRIMARY_NAME_SUFFIX'] = rowData1['nameSuffix']
         if fullName:
-            updateStat(recordType1, 'PARSED_NAME', fullName.strip())
+            updateStat(statCategory, 'PARSED_NAME', fullName.strip())
 
         #--map the address
         if 'primaryAddress' in rowData1 and rowData1['primaryAddress']:
-            print(thisDuns)
             addrType = 'PRIMARY'
             fullAddress, jsonAddr = mapJsonAddr(rowData1['primaryAddress'], addrType)
             if fullAddress:
                 jsonData1.update(jsonAddr)
-                updateStat(recordType, addrType + 'ADDRESS', fullAddress)
+                updateStat(statCategory, 'ADDRESS+' + addrType, fullAddress)
         
         if 'birthDate' in rowData1 and rowData1['birthDate']:
             jsonData1['DATE_OF_BIRTH'] = rowData1['birthDate']
-            updateStat(recordType1, 'DOB', rowData1['birthDate'])
+            updateStat(statCategory, 'DOB', rowData1['birthDate'])
         if 'gender' in rowData1 and 'description' in rowData1['gender'] and rowData1['gender']['description']:
             jsonData1['GENDER'] = rowData1['gender']['description']
-            updateStat(recordType1, 'GENDER', rowData1['gender']['description'])
+            updateStat(statCategory, 'GENDER', rowData1['gender']['description'])
         if 'nationality' in rowData1 and 'isoAlpha2Code' in rowData1['nationality'] and rowData1['nationality']['isoAlpha2Code']:
             jsonData1['NATIONALITY'] = rowData1['nationality']['isoAlpha2Code']
-            updateStat(recordType1, 'NATIONALITY', rowData1['nationality']['isoAlpha2Code'])
+            updateStat(statCategory, 'NATIONALITY', rowData1['nationality']['isoAlpha2Code'])
 
+        jobTitleList = []
         if 'jobTitles' in rowData1 and rowData1['jobTitles']:
-            jobTitleList = []
             for titleData in rowData1['jobTitles']:
                 jobTitleList.append(titleData['title'])
+                updateStat(statCategory, 'JOB_TITLE', titleData['title'])
             jsonData1['JOB_TITLE'] = ','.join(jobTitleList) 
 
         #--relate them to the company and use their group association for matching
-        #jsonData['RELATIONSHIP_TYPE'] = 'CONTACT'
-        #jsonData['RELATIONSHIP_KEY'] = rowData['DUNS_ID']
-        #updateStat(recordType, 'RELATIONSHIP')
+        jsonData1['REL_POINTER_DOMAIN'] = 'DUNS'
+        jsonData1['REL_POINTER_KEY'] = thisDuns
+        jsonData1['REL_POINTER_ROLE'] = jobTitleList[0] if jobTitleList else rowData1['principleType']
+
         jsonData1['GROUP_ASSN_ID_TYPE'] = 'DUNS'
         jsonData1['GROUP_ASSN_ID_NUMBER'] = thisDuns
-        updateStat(recordType1, 'GROUP_ASSN_ID', thisDuns)
+        updateStat(statCategory, 'GROUP_ASSN_ID', thisDuns)
         if bestName:
             jsonData1['GROUP_ASSOCIATION_ORG_NAME'] = bestName
-            updateStat(recordType1, 'GROUP_ASSOCIATION_NAME', bestName)
+            updateStat(statCategory, 'GROUP_ASSOCIATION_NAME', bestName)
 
         #--current and most senior principles overlap
         if jsonData1 not in jsonList:
             jsonList.append(jsonData1)
 
+    #--add the primary entity
     jsonList.append(jsonData)
-
 
     return jsonList
 
@@ -542,15 +648,6 @@ def processFile(inputFileName):
             print('')
             return 1
 
-        #if 'headerRows' in dnbFormat:
-        #    for i in range(int(dnbFormat['headerRows']) if dnbFormat['headerRows'].isdigit() else 1):
-        #        headerRow = next(inputFileReader)
-        #        if len(headerRow) != len(fileColumns):
-        #            print('')
-        #            print('File mismatch: expected %s columns, got %s' % (len(dnbFormat['columns']), len(headerRow)))
-        #            print('')
-        #            return 1
-
     #--open an output file if output is a directory
     if not outputIsFile:
         outputFileName = outputFilePath + os.path.basename(inputFileName) + '.json'
@@ -562,6 +659,8 @@ def processFile(inputFileName):
             print('')
             sys.exit(1)
 
+    fileStartTime = time.time()
+    batchStartTime = time.time()
     badCnt = 0
     rowCnt = 0
     for row in inputFileReader:
@@ -613,9 +712,6 @@ def processFile(inputFileName):
         #--process each json record returned
         for jsonData in jsonList:
 
-            #--add watch_list keys
-            jsonData = baseLibrary.jsonUpdater(jsonData)
-
             #--write it to file
             msg = json.dumps(jsonData)
             try: outputFileHandle.write(msg + '\n')
@@ -628,23 +724,26 @@ def processFile(inputFileName):
                 break
 
         if rowCnt % progressInterval == 0:
-            print('%s records processed' % rowCnt)
+            now = datetime.now().strftime('%I:%M%p').lower()
+            elapsedMins = round((time.time() - procStartTime) / 60, 1)
+            eps = int(float(progressInterval) / (float(time.time() - batchStartTime if time.time() - batchStartTime != 0 else 1)))
+            batchStartTime = time.time()
+            print(' %s records processed at %s, %s per second' % (rowCnt, now, eps))
 
         if shutDown:
             break
 
     if not shutDown:
-        print('%s records processed, complete!' % rowCnt)
+        now = datetime.now().strftime('%I:%M%p').lower()
+        elapsedMins = round((time.time() - fileStartTime) / 60, 1)
+        eps = int(float(rowCnt) / (float(time.time() - fileStartTime if time.time() - fileStartTime != 0 else 1)))
+        print(' %s records processed at %s, %s per second, complete!' % (rowCnt, now, eps))
     
     #--close all inputs and outputs
     #--open an output file if output is a directory
     if not outputIsFile:
         outputFileHandle.close()
     inputFileHandle.close()
-    #for i in range(len(mappingDoc['outputs'])):
-    #    print('%s rows written to %s, %s rows skipped' % (mappingDoc['outputs'][i]['rowsWritten'], mappingDoc['outputs'][i]['fileName'], mappingDoc['outputs'][i]['rowsSkipped']))
-    #for fileName in openFiles:
-    #    openFiles[fileName].close()
 
     return shutDown
 
@@ -757,9 +856,8 @@ if __name__ == "__main__":
     #--write statistics file
     if logFile: 
         print('')
-        statPack['BASE_LIBRARY'] = baseLibrary.statPack
         with open(logFile, 'w') as outfile:
-            json.dump(statPack, outfile, indent=4, sort_keys = True)    
+            json.dump(statPack, outfile, indent=4, sort_keys = True)
         print('Mapping stats written to %s' % logFile)
     
     print('')
@@ -770,7 +868,5 @@ if __name__ == "__main__":
         print('Process aborted after %s minutes!' % elapsedMins)
     print('')
     
-    sys.exit(0)
-
     sys.exit(0)
 
