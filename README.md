@@ -106,5 +106,5 @@ If you use the G2Loader program to load your data, its best to list the mapped j
 ```console
 python3 G2Loader.py -p <name of project file>
 
-If you use the API directly, then you just need to perform an process() or addRecord() for each line of each mapped file.
+If you use the API directly, then you just need to perform an addRecord() for each line of each mapped file.
 ```
