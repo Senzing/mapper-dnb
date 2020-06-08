@@ -56,10 +56,6 @@ Place the the following files on a directory of your choice ...
 - [dnb_config_updates.json](dnb_config_updates.json)
 - [dnb_formats.json](dnb_formats.json)
 
-```Console
-export PYTHONPATH=$PYTHONPATH:/senzing/mappers/mapper-base
-```
-
 ### Configuring Senzing
 
 *Note:* This only needs to be performed one time! In fact you may want to add these configuration updates to a master configuration file for all your data sources.
