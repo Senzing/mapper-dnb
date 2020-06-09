@@ -18,4 +18,3 @@ addAttribute {"attribute": "INDUSTRY_CODE_TYPE", "class": "OTHER", "feature": "I
 addAttribute {"attribute": "INDUSTRY_CODE_VALUE", "class": "OTHER", "feature": "INDUSTRY_CODE", "element": "VALUE", "required": "Yes", "default": "", "advanced": "No", "internal": "No"}
 
 save
-updateDatabase
