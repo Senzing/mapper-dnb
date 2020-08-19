@@ -400,10 +400,11 @@ def format_CMPCVF(rowData):
     #--phone numbers
     thisList = []
     for record in rowData['telephone'] if 'telephone' in rowData else []:
-        phoneNumber = '+' + record['isdCode'] + ' ' if 'isdCode' in record and record['isdCode'] else '' 
-        phoneNumber += record['telephoneNumber']
-        thisList.append({"PHONE_NUMBER": phoneNumber})
-        updateStat(statCategory, 'PHONE_NUMBER', phoneNumber)
+        if record['telephoneNumber']:
+            phoneNumber = '+' + record['isdCode'] + ' ' if 'isdCode' in record and record['isdCode'] else '' 
+            phoneNumber += record['telephoneNumber']
+            thisList.append({"PHONE_NUMBER": phoneNumber})
+            updateStat(statCategory, 'PHONE_NUMBER', phoneNumber)
     if thisList:
         jsonData['TELEPHONES'] = thisList
 
@@ -522,7 +523,11 @@ def format_CMPCVF(rowData):
 
     principleCnt = 0
     for rowData1 in principleList:
+        if 'fullName' not in rowData1 and 'familyName' not in rowData1:
+            updateStat(statCategory, 'NO_NAME_SKIP1', json.dumps(rowData1))
+            continue
         if not rowData1['fullName'] and not rowData1['familyName']:
+            updateStat(statCategory, 'NO_NAME_SKIP2', json.dumps(rowData1))
             continue
         principleCnt += 1
 
@@ -537,23 +542,28 @@ def format_CMPCVF(rowData):
         jsonData1['RECORD_TYPE'] = recordType1
 
         fullName = ''
-        if 'namePrefix' in rowData1 and rowData1['namePrefix']:
-            fullName += (' ' + rowData1['namePrefix'])
-            jsonData1['PRIMARY_NAME_PREFIX'] = rowData1['namePrefix']
-        if 'givenName' in rowData1 and rowData1['givenName']:
-            fullName += (' ' + rowData1['givenName'])
-            jsonData1['PRIMARY_NAME_FIRST'] = rowData1['givenName']
-        if 'middleName' in rowData1 and rowData1['middleName']:
-            fullName += (' ' + rowData1['middleName'])
-            jsonData1['PRIMARY_NAME_MIDDLE'] = rowData1['middleName']
-        if 'familyName' in rowData1 and rowData1['familyName']:
-            fullName += (' ' + rowData1['familyName'])
-            jsonData1['PRIMARY_NAME_LAST'] = rowData1['familyName']
-        if 'nameSuffix' in rowData1 and rowData1['nameSuffix']:
-            fullName += (' ' + rowData1['nameSuffix'])
-            jsonData1['PRIMARY_NAME_SUFFIX'] = rowData1['nameSuffix']
-        if fullName:
-            updateStat(statCategory, 'PARSED_NAME', fullName.strip())
+        if 'fullName' in rowData1 and rowData1['fullName']:
+            fullName = rowData1['fullName'].strip()
+            jsonData1['PRIMARY_NAME_FULL'] = fullName
+            updateStat(statCategory, 'FULL_NAME', fullName)
+        else:
+            if 'namePrefix' in rowData1 and rowData1['namePrefix']:
+                fullName += (' ' + rowData1['namePrefix'])
+                jsonData1['PRIMARY_NAME_PREFIX'] = rowData1['namePrefix']
+            if 'givenName' in rowData1 and rowData1['givenName']:
+                fullName += (' ' + rowData1['givenName'])
+                jsonData1['PRIMARY_NAME_FIRST'] = rowData1['givenName']
+            if 'middleName' in rowData1 and rowData1['middleName']:
+                fullName += (' ' + rowData1['middleName'])
+                jsonData1['PRIMARY_NAME_MIDDLE'] = rowData1['middleName']
+            if 'familyName' in rowData1 and rowData1['familyName']:
+                fullName += (' ' + rowData1['familyName'])
+                jsonData1['PRIMARY_NAME_LAST'] = rowData1['familyName']
+            if 'nameSuffix' in rowData1 and rowData1['nameSuffix']:
+                fullName += (' ' + rowData1['nameSuffix'])
+                jsonData1['PRIMARY_NAME_SUFFIX'] = rowData1['nameSuffix']
+            if fullName:
+                updateStat(statCategory, 'PARSED_NAME', fullName.strip())
 
         #--map the address
         if 'primaryAddress' in rowData1 and rowData1['primaryAddress']:
