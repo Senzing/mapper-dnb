@@ -523,11 +523,10 @@ def format_CMPCVF(rowData):
 
     principleCnt = 0
     for rowData1 in principleList:
-        if 'fullName' not in rowData1 and 'familyName' not in rowData1:
-            updateStat(statCategory, 'NO_NAME_SKIP1', json.dumps(rowData1))
-            continue
-        if not rowData1['fullName'] and not rowData1['familyName']:
-            updateStat(statCategory, 'NO_NAME_SKIP2', json.dumps(rowData1))
+        fullName = rowData1.get('fullName')
+        familyName = rowData1.get('familyName')
+        if not fullName and not familyName:
+            updateStat(statCategory, 'NO_NAME_SKIP', json.dumps(rowData1))
             continue
         principleCnt += 1
 
@@ -541,12 +540,12 @@ def format_CMPCVF(rowData):
         jsonData1['ENTITY_TYPE'] = recordType1
         jsonData1['RECORD_TYPE'] = recordType1
 
-        fullName = ''
-        if 'fullName' in rowData1 and rowData1['fullName']:
+        if fullName:
             fullName = rowData1['fullName'].strip()
             jsonData1['PRIMARY_NAME_FULL'] = fullName
             updateStat(statCategory, 'FULL_NAME', fullName)
         else:
+            fullName = ''
             if 'namePrefix' in rowData1 and rowData1['namePrefix']:
                 fullName += (' ' + rowData1['namePrefix'])
                 jsonData1['PRIMARY_NAME_PREFIX'] = rowData1['namePrefix']
