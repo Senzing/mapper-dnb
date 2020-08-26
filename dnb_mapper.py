@@ -1,15 +1,16 @@
 #! /usr/bin/env python3
 
-import os
-import sys
 import argparse
+import csv
+import glob
+import json
+import os
+import random
 import signal
+import sys
 import time
 from datetime import datetime, timedelta
-import glob
-import csv
-import json
-import random
+
 
 #----------------------------------------
 def pause(question='PRESS ENTER TO CONTINUE ...'):
@@ -30,6 +31,7 @@ def signal_handler(signal, frame):
         
 #----------------------------------------
 def updateStat(cat1, cat2, example = None):
+
     if cat1 not in statPack:
         statPack[cat1] = {}
     if cat2 not in statPack[cat1]:
@@ -295,8 +297,8 @@ def mapJsonAddr(addrData, usageType, recordID = None):
             fullAddress = (fullAddress + ' ' + addrValue).strip()
 
     #--never seen this populated, though have seen po boxes on line1
-    if 'postOfficeBox' in addrData and 'postOfficeBoxNumber' in addrData['postOfficeBox'] and addrData['postOfficeBoxNumber']['postOfficeBoxNumber']:
-        addrValue = 'Post Office Box ' + addrData['postOfficeBoxNumber']['postOfficeBoxNumber']
+    if 'postOfficeBox' in addrData and addrData['postOfficeBox'].get('postOfficeBoxNumber'):
+        addrValue = 'Post Office Box ' + addrData['postOfficeBox']['postOfficeBoxNumber']
         jsonAddr[addrType + 'ADDR_LINE1'] = addrValue
         fullAddress = 'Post Office Box ' + addrValue
 
@@ -371,17 +373,24 @@ def format_CMPCVF(rowData):
                 bestName = rowData[nameField]
 
     thisList = []
-    for record in rowData['formerPrimaryNames'] if 'formerPrimaryNames' in rowData else []:
-        thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
-        updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
-    for record in rowData['formerRegisteredNames'] if 'formerRegisteredNames' in rowData else []:
-        thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
-        updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
-    for record in rowData['tradeStyleNames'] if 'tradeStyleNames' in rowData else []:
-        thisList.append({'NAME_TYPE': 'TRADE', 'NAME_ORG': record['name']})
-        updateStat(statCategory, 'NAME_ORG_' + 'TRADE', record['name'])
+    for record in rowData.get('formerPrimaryNames', list()):
+        if record.get('name'):
+            thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
+            updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
+    
+    for record in rowData.get('formerRegisteredNames', list()):
+        if record.get('name'): 
+            thisList.append({'NAME_TYPE': 'FORMER', 'NAME_ORG': record['name']})
+            updateStat(statCategory, 'NAME_ORG_' + 'FORMER', record['name'])
+    
+    for record in rowData.get('tradeStyleNames', list()):
+        if record.get('name'):
+            thisList.append({'NAME_TYPE': 'TRADE', 'NAME_ORG': record['name']})
+            updateStat(statCategory, 'NAME_ORG_' + 'TRADE', record['name'])
+    
     if thisList:
         jsonData['ADDITIONAL_NAMES'] = thisList
+
 
     #--map the addresses
     addrFields = {}
@@ -432,18 +441,28 @@ def format_CMPCVF(rowData):
             thisList.append({"TAX_ID_COUNTRY": 'US'})
             updateStat(statCategory, 'TAX_ID:' + record['typeDescription'], record['registrationNumber'])
         else:
-            thisList.append({"OTHER_ID_TYPE": record['typeDescription']})
             thisList.append({"OTHER_ID_NUMBER": record['registrationNumber']})
-            updateStat(statCategory, 'OTHER_ID:' + record['typeDescription'], record['registrationNumber'])
+            if record.get('typeDescription'):
+                thisList.append({"OTHER_ID_TYPE": record['typeDescription']})
+                updateStat(statCategory, 'OTHER_ID:' + record['typeDescription'], record['registrationNumber'])
+            else:
+                updateStat(statCategory, 'OTHER_ID:' + '', record['registrationNumber'])
+
     if thisList:
         jsonData['OTHER_IDS'] = thisList
 
     #--industry codes
     thisList = []
-    for record in rowData['industryCodes'] if 'industryCodes' in rowData else []:
-        codeData = '%s (%s)' % (record['code'], record['description'])
-        thisList.append({"INDUSTRY_CODE_VALUE": codeData, "INDUSTRY_CODE_TYPE": record['typeDescription']})
-        updateStat(statCategory, 'INDUSTRY_CODE:' + record['typeDescription'], codeData)
+    for record in rowData.get('industryCodes', list()):
+        # description can be null
+        codeData = f'{record.get("code", str())} {"(" + record["description"] + ")" if record.get("description") else str()}'
+        #typeDescription can be null
+        if record.get('typeDescription'):
+            updateStat(statCategory, 'INDUSTRY_CODE:' + record['typeDescription'], codeData)
+            thisList.append({"INDUSTRY_CODE_VALUE": codeData, "INDUSTRY_CODE_TYPE": record['typeDescription']})
+        else:
+            updateStat(statCategory, 'INDUSTRY_CODE:' + '', codeData)
+            thisList.append({"INDUSTRY_CODE_VALUE": codeData})
     if thisList:
         jsonData['INDUSTRY_CODES'] = thisList
 
@@ -454,8 +473,9 @@ def format_CMPCVF(rowData):
     if 'businessEntityType' in rowData and 'description' in rowData['businessEntityType'] and rowData['businessEntityType']['description']:
         jsonData['BUSINESS_TYPE'] = rowData['businessEntityType']['description']
         updateStat(statCategory, 'OPERATING_STATUS', jsonData['BUSINESS_TYPE'])
-    if 'legalForm' in rowData and 'description' in rowData['legalForm'] and rowData['legalForm']['description']:
-        jsonData['LEGAL_FORM'] = rowData['businessEntityType']['description']
+    if 'legalForm' in rowData and rowData['legalForm'].get('description') and rowData['businessEntityType'].get('description'):
+        jsonData['LEGAL_FORM'] = rowData['businessEntityType'].get('description')
+
         updateStat(statCategory, 'LEGAL_FORM', jsonData['LEGAL_FORM'])
 
     if 'incorporatedDate' in rowData and rowData['incorporatedDate']:
@@ -758,6 +778,7 @@ def processFile(inputFileName):
 
 #----------------------------------------
 if __name__ == "__main__":
+
     appPath = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     global shutDown
@@ -765,76 +786,66 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     procStartTime = time.time()
     progressInterval = 10000
+    dnbFormat = None
 
     #--load the dnb file formats
     dnbFormatFile = appPath + os.path.sep + 'dnb_formats.json'
-    print(dnbFormatFile)
+    print(f'\nFormats File: {dnbFormatFile}')
+    
     if not os.path.exists(dnbFormatFile):
-        print('')
-        print('Format file missing: %s' % dnbFormatFile)
-        print('')
+        print(f'\nFormat file missing: {dnbFormatFile}\n')
         sys.exit(1)
-    try: dnbFormats = json.load(open(dnbFormatFile,'r'))
+
+    try: 
+        dnbFormats = json.load(open(dnbFormatFile,'r'))
     except json.decoder.JSONDecodeError as err:
-        print('')
-        print('JSON error %s in %s' % (err, dnbFormatFile))
-        print('')
+        print(f'\nJSON error {err} in {dnbFormatFile}\n')
         sys.exit(1)
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('-f', '--dnb_format', default=os.getenv('dnb_format'.upper(), None), type=str, help='choose CMPCVF, UBO, or GCA')
+    argparser.add_argument('-f', '--dnb_format', default=os.getenv('dnb_format'.upper(), None), type=str.upper, help='choose CMPCVF, UBO, or GCA')
     argparser.add_argument('-i', '--input_spec', default=os.getenv('input_spec'.upper(), None), type=str, help='the name of one or more DNB files to map (place in quotes if you use wild cards)')
     argparser.add_argument('-o', '--output_path', default=os.getenv('output_path'.upper(), None), type=str, help='output directory or file name for mapped json records')
     argparser.add_argument('-l', '--log_file', default=os.getenv('log_file', None), type=str, help='optional statistics filename (json format).')
     args = argparser.parse_args()
-    dnbFormatCode = args.dnb_format
-    inputFileSpec = args.input_spec
     outputFilePath = args.output_path
     logFile = args.log_file
     
     #--verify dnb format code
-    if not dnbFormatCode:
-        print('')
-        print('Please select a DNB format code from dnb_formats.json')
-        print('')
+    if not args.dnb_format:
+        print(f'\nPlease select a DNB format code from {dnbFormatFile}\n')
         sys.exit(1)
-    dnbFormat = None
-    for formatData in dnbFormats:
-        if formatData['formatCode'].upper() == dnbFormatCode.upper():
+
+    for formatData in dnbFormats.get('mapperFormatCodes', list()):
+        if formatData['formatCode'].upper() == args.dnb_format:
             dnbFormat = formatData
+            continue
+
     if not dnbFormat:
-        print('')
-        print('DNB format code %s not found in dnb_formats.json' % dnbFormatCode)
-        print('')
+        print(f'\nDNB format code {args.dnb_format} not found in dnb_formats.json\n')
         sys.exit(1)
 
     #--verify input files to process
-    if not inputFileSpec:
-        print('')
-        print('Please select a set of %s files to process' % dnbFormatCode)
-        print('')
+    if not args.input_spec:
+        print(f'\nPlease enter one or more {args.dnb_format} file(s) to process\n')
         sys.exit(1)
-    inputFileList = glob.glob(inputFileSpec)
+    
+    inputFileList = glob.glob(args.input_spec)
     if len(inputFileList) == 0:
-        print('')
-        print('No files found matching %s' % inputFileSpec)
-        print('')
+        print(f'\nNo files found matching {args.input_spec}\n')
         sys.exit(1)
 
     #--open output if a single file was specified
     if not outputFilePath:
-        print('')
-        print('Please select a directory or file to write the output files to')
-        print('')
+        print('\nPlease enter a directory or file to write the output files to\n')
         sys.exit(1)
+    
     outputIsFile = not os.path.isdir(outputFilePath)
     if outputIsFile:
-        try: outputFileHandle = open(outputFilePath, "w", encoding='utf-8')
+        try: 
+            outputFileHandle = open(outputFilePath, "w", encoding='utf-8')
         except IOError as err:
-            print('')
-            print('Could not open output file %s for writing' % outputFilePath)
-            print(' %s' % err)
-            print('')
+            print(f'\nCould not open output file {outputFilePath} for writing: {err}\n')
             sys.exit(1)
     else:
         if outputFilePath[-1] != os.path.sep:
@@ -847,35 +858,27 @@ if __name__ == "__main__":
     inputFileNum = 0
     for inputFileName in sorted(inputFileList):
         inputFileNum += 1
-        fileDisplay = 'Processing file %s of %s - %s ...' % (inputFileNum, len(inputFileList), inputFileName)
-        print('')
-        print('-' * len(fileDisplay))
+        fileDisplay = f'Processing file {inputFileNum} of {len(inputFileList)} - {inputFileName}...\n'
+        print(f'\n' + '-' * len(fileDisplay))
         print(fileDisplay)
     
         shutDown = processFile(inputFileName)
         if shutDown:
             break
 
-    print('')
-    print('%s of %s files processed' % (inputFileNum, len(inputFileList)))
+    print(f'\n{inputFileNum} of {len(inputFileList)} files processed')
 
     if outputIsFile:
         outputFileHandle.close()
 
     #--write statistics file
     if logFile: 
-        print('')
         with open(logFile, 'w') as outfile:
             json.dump(statPack, outfile, indent=4, sort_keys = True)
-        print('Mapping stats written to %s' % logFile)
+        print(f'\nMapping stats written to {logFile}')
     
-    print('')
     elapsedMins = round((time.time() - procStartTime) / 60, 1)
-    if shutDown == 0:
-        print('Process completed successfully in %s minutes!' % elapsedMins)
-    else:
-        print('Process aborted after %s minutes!' % elapsedMins)
-    print('')
+    success_msg = 'completed successfully in' if shutDown == 0 else 'aborted after'
+    print(f'\nProcess {success_msg} {elapsedMins} minutes')
     
     sys.exit(0)
-

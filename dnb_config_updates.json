@@ -17,4 +17,6 @@ addFeature {"feature": "INDUSTRY_CODE", "class": "OTHER", "behavior": "FM", "ano
 addAttribute {"attribute": "INDUSTRY_CODE_TYPE", "class": "OTHER", "feature": "INDUSTRY_CODE", "element": "TYPE", "required": "Yes", "default": "", "advanced": "No", "internal": "No"}
 addAttribute {"attribute": "INDUSTRY_CODE_VALUE", "class": "OTHER", "feature": "INDUSTRY_CODE", "element": "VALUE", "required": "Yes", "default": "", "advanced": "No", "internal": "No"}
 
+# Optional setting to ensure companys with different duns number do not resolve 
+setFeature {"feature": "DUNS_NUMBER", "behavior": "A1ES"}
 save
