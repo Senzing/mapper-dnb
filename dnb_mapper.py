@@ -81,7 +81,8 @@ def format_UBO(rowData):
     #--json header
     jsonData = {}
     jsonData['DATA_SOURCE'] = 'DNB-OWNER'
-    #--jsonData['RECORD_ID'] = ?? let G2 set it
+    if rowData['BENF_ID']:
+        jsonData['RECORD_ID'] = '%s-%s' % (rowData['SUBJ_DUNS'], rowData['BENF_ID'])
     jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
     updateStat('INPUT', recordType)
