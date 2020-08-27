@@ -142,7 +142,7 @@ def format_UBO(rowData):
     if rowData['SUBJ_DUNS']:
         jsonData['REL_POINTER_DOMAIN'] = 'DUNS'
         jsonData['REL_POINTER_KEY'] = rowData['SUBJ_DUNS']
-        jsonData['REL_POINTER_ROLE'] = 'beneficialOwner'
+        jsonData['REL_POINTER_ROLE'] = 'Owner'
         jsonData['GROUP_ASSN_ID_TYPE'] = 'DUNS'
         jsonData['GROUP_ASSN_ID_NUMBER'] = rowData['SUBJ_DUNS']
         updateStat(recordType, 'GROUP_ASSN_ID', rowData['SUBJ_DUNS'])
@@ -612,7 +612,7 @@ def format_CMPCVF(rowData):
         #--relate them to the company and use their group association for matching
         jsonData1['REL_POINTER_DOMAIN'] = 'DUNS'
         jsonData1['REL_POINTER_KEY'] = thisDuns
-        jsonData1['REL_POINTER_ROLE'] = jobTitleList[0] if jobTitleList else rowData1['principleType']
+        jsonData1['REL_POINTER_ROLE'] = rowData1['principleType']
 
         jsonData1['GROUP_ASSN_ID_TYPE'] = 'DUNS'
         jsonData1['GROUP_ASSN_ID_NUMBER'] = thisDuns
