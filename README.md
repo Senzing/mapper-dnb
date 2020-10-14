@@ -25,7 +25,7 @@ usage: dnb_mapper.py [-h] [-f DNB_FORMAT] [-i INPUT_SPEC] [-o OUTPUT_PATH]
 optional arguments:
   -h, --help            show this help message and exit
   -f DNB_FORMAT, --dnb_format DNB_FORMAT
-                        choose CMPCVF, UBO, or GCA
+                        choose CMPCVF, UBO, UBO-SUBJECT or GCA
   -i INPUT_SPEC, --input_spec INPUT_SPEC
                         the name of one or more DNB files to map (place in
                         quotes if you use wild cards)
@@ -80,11 +80,15 @@ python3 dnb_mapper.py -f CMPCVF -i "./input/CMPCVF*.txt" -o ./output -l cmpcvf_s
 python3 dnb_mapper.py -f GCA -i "./input/GCA*.txt" -o ./output -l gca_stats.json
 
 python3 dnb_mapper.py -f UBO -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
+
+python3 dnb_mapper.py -f UBO-SUBJECT -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
 ```
 
 The output file defaults to the same name and location as the input file and a .json extension is added.
 
 *It is critical that the -f file format match the input files exactly!*
+
+*Note: Normally the company hierarchy comes from the CMPCVF format.  However, the UBO format also contains a trimmed down version of company records and their hierarchy.  Execute the 4th command above to capture the company hierarchy from the UBO file rather than the CMPCVF file.*
 
 ### Loading into Senzing
 

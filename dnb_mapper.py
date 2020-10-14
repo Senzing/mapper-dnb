@@ -632,6 +632,116 @@ def format_CMPCVF(rowData):
     return jsonList
 
 #----------------------------------------
+def format_UBO_SUBJECT(rowData, mapped_record_cache):
+
+    #--data corrections / updates
+    if ':' in rowData['SUBJ_DUNS']:   #--sometimes they prepended file name to first column like this: UBO_00_0819.txt:021475652
+        rowData['SUBJ_DUNS'] = rowData['SUBJ_DUNS'][rowData['SUBJ_DUNS'].find(':') + 1:]
+
+    if 'subject' not in mapped_record_cache:
+        mapped_record_cache['subject'] = {}
+    if 'parent' not in mapped_record_cache:
+        mapped_record_cache['parent'] = {}
+
+    #--bypass if already mapped
+    if rowData['SUBJ_DUNS'] in mapped_record_cache['subject']: 
+        updateStat('DUPLICATE', 'SUBJECT_DUNS', rowData['SUBJ_DUNS'])
+        return [], mapped_record_cache
+    mapped_record_cache['subject'][rowData['SUBJ_DUNS']] = 1
+
+    jsonList = []
+
+    #--subject company json
+    jsonData = {}
+    jsonData['DATA_SOURCE'] = 'DNB-COMPANY'
+    jsonData['RECORD_ID'] = rowData['SUBJ_DUNS']
+    jsonData['DUNS_NUMBER'] = rowData['SUBJ_DUNS']
+    jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
+    jsonData['RECORD_TYPE'] = 'ORGANIZATION'
+    updateStat('DATA_SOURCE', 'DNB-COMPANY')
+
+    jsonData['PRIMARY_NAME_ORG'] = rowData['SUBJ_NME']
+    jsonData['BUSINESS_ADDR_LINE1'] = rowData['SUBJ_ADR_LN1']
+    jsonData['BUSINESS_ADDR_LINE2'] = rowData['SUBJ_ADR_LN2']
+    jsonData['BUSINESS_ADDR_LINE3'] = rowData['SUBJ_ADR_LN3']
+    jsonData['BUSINESS_ADDR_CITY'] = rowData['SUBJ_PRIM_TOWN']
+    jsonData['BUSINESS_ADDR_STATE'] = rowData['SUBJ_PROV_OR_ST']
+    jsonData['BUSINESS_ADDR_POSTAL_CODE'] = rowData['SUBJ_POST_CD']
+    jsonData['BUSINESS_ADDR_COUNTRY'] = rowData['SUBJ_CTRY_CD']
+    jsonData['legal_form'] = rowData['SUBJ_LGL_FORM_DESC']
+    jsonData['sic_code'] = '%s-%s' % (rowData['SIC_CD'], rowData['SIC_CD_DESC'])
+
+    relationshipList = []
+    relData = {}
+    relData['REL_ANCHOR_DOMAIN'] = 'DUNS'
+    relData['REL_ANCHOR_KEY'] = rowData['SUBJ_DUNS']
+    relationshipList.append(relData)
+    if rowData['PRNT_DUNS']:
+        relData = {}
+        relData['REL_POINTER_DOMAIN'] = 'DUNS'
+        relData['REL_POINTER_KEY'] = rowData['PRNT_DUNS']
+        relData['REL_POINTER_ROLE'] = 'direct parent'
+        relationshipList.append(relData)
+    if rowData['DOM_ULT_DUNS']:
+        relData = {}
+        relData['REL_POINTER_DOMAIN'] = 'DUNS'
+        relData['REL_POINTER_KEY'] = rowData['DOM_ULT_DUNS']
+        relData['REL_POINTER_ROLE'] = 'domestic parent'
+        relationshipList.append(relData)
+    if rowData['GLBL_ULT_DUNS']:
+        relData = {}
+        relData['REL_POINTER_DOMAIN'] = 'DUNS'
+        relData['REL_POINTER_KEY'] = rowData['GLBL_ULT_DUNS']
+        relData['REL_POINTER_ROLE'] = 'global parent'
+        relationshipList.append(relData)
+    jsonData['RELATIONSHIP_LIST'] = relationshipList
+    jsonList.append(jsonData)
+
+    if rowData['PRNT_DUNS'] and rowData['PRNT_DUNS'] not in mapped_record_cache['parent']: 
+        mapped_record_cache['parent'][rowData['PRNT_DUNS']] = 1
+        jsonData = {}
+        jsonData['DATA_SOURCE'] = 'DNB-PARENT'
+        jsonData['RECORD_ID'] = rowData['PRNT_DUNS']
+        jsonData['DUNS_NUMBER'] = rowData['PRNT_DUNS']
+        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
+        jsonData['RECORD_TYPE'] = 'ORGANIZATION'
+        jsonData['PRIMARY_NAME_ORG'] = rowData['PRNT_NME']
+        jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
+        jsonData['REL_ANCHOR_KEY'] = rowData['PRNT_DUNS']
+        updateStat('DATA_SOURCE', 'DNB-PARENT')
+        jsonList.append(jsonData)
+
+    if rowData['DOM_ULT_DUNS'] and rowData['DOM_ULT_DUNS'] not in mapped_record_cache['parent']: 
+        mapped_record_cache['parent'][rowData['DOM_ULT_DUNS']] = 1
+        jsonData = {}
+        jsonData['DATA_SOURCE'] = 'DNB-PARENT'
+        jsonData['RECORD_ID'] = rowData['DOM_ULT_DUNS']
+        jsonData['DUNS_NUMBER'] = rowData['DOM_ULT_DUNS']
+        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
+        jsonData['RECORD_TYPE'] = 'ORGANIZATION'
+        jsonData['PRIMARY_NAME_ORG'] = rowData['DOM_ULT_NME']
+        jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
+        jsonData['REL_ANCHOR_KEY'] = rowData['DOM_ULT_DUNS']
+        updateStat('DATA_SOURCE', 'DNB-PARENT')
+        jsonList.append(jsonData)
+
+    if rowData['GLBL_ULT_DUNS'] and rowData['GLBL_ULT_DUNS'] not in mapped_record_cache['parent']: 
+        mapped_record_cache['parent'][rowData['GLBL_ULT_DUNS']] = 1
+        jsonData = {}
+        jsonData['DATA_SOURCE'] = 'DNB-PARENT'
+        jsonData['RECORD_ID'] = rowData['GLBL_ULT_DUNS']
+        jsonData['DUNS_NUMBER'] = rowData['GLBL_ULT_DUNS']
+        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
+        jsonData['RECORD_TYPE'] = 'ORGANIZATION'
+        jsonData['PRIMARY_NAME_ORG'] = rowData['GLBL_ULT_NME']
+        jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
+        jsonData['REL_ANCHOR_KEY'] = rowData['GLBL_ULT_DUNS']
+        updateStat('DATA_SOURCE', 'DNB-PARENT')
+        jsonList.append(jsonData)
+
+    return jsonList, mapped_record_cache
+
+#----------------------------------------
 def processFile(inputFileName):
     updateStat('INPUT', 'FILE_COUNT')
     global shutDown, outputFileHandle, outputFileName
@@ -689,6 +799,9 @@ def processFile(inputFileName):
             print('')
             sys.exit(1)
 
+    #--to de-dupe records if needed
+    mapped_record_cache = {}
+
     fileStartTime = time.time()
     batchStartTime = time.time()
     badCnt = 0
@@ -732,6 +845,8 @@ def processFile(inputFileName):
             jsonList = format_GCA(rowData)
         elif dnbFormat['formatCode'] == 'CMPCVF':
             jsonList = format_CMPCVF(rowData)
+        elif dnbFormat['formatCode'] == 'UBO_SUBJECT':
+            jsonList, mapped_record_cache = format_UBO_SUBJECT(rowData, mapped_record_cache)
         else:
             print('')
             print('No conversions for format code %s' % dnbFormat['formatCode'])
@@ -804,7 +919,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('-f', '--dnb_format', default=os.getenv('dnb_format'.upper(), None), type=str.upper, help='choose CMPCVF, UBO, or GCA')
+    argparser.add_argument('-f', '--dnb_format', default=os.getenv('dnb_format'.upper(), None), type=str.upper, help='choose CMPCVF, UBO, UBO-SUBJECT, or GCA')
     argparser.add_argument('-i', '--input_spec', default=os.getenv('input_spec'.upper(), None), type=str, help='the name of one or more DNB files to map (place in quotes if you use wild cards)')
     argparser.add_argument('-o', '--output_path', default=os.getenv('output_path'.upper(), None), type=str, help='output directory or file name for mapped json records')
     argparser.add_argument('-l', '--log_file', default=os.getenv('log_file', None), type=str, help='optional statistics filename (json format).')
