@@ -81,7 +81,7 @@ python3 dnb_mapper.py -f GCA -i "./input/GCA*.txt" -o ./output -l gca_stats.json
 
 python3 dnb_mapper.py -f UBO -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
 
-python3 dnb_mapper.py -f UBO-SUBJECT -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
+python3 dnb_mapper.py -f UBO_SUBJECT -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
 ```
 
 The output file defaults to the same name and location as the input file and a .json extension is added.
