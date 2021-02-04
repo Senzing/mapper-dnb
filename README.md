@@ -6,14 +6,14 @@ The [dnb_mapper.py](dnb_mapper.py) python script converts Dun & Bradstreet (DNB)
 
 - Companies and their principles **(CMPCVF)** json format
 - Global contacts **(GCA)** tab delimited csv format
-- Ultimate beneficial owners **(UBO)** tab delinited csv format
+- Ultimate beneficial owners **(UBO)** tab delimited csv format
 
 Normally these are provided by DNB on request and placed on an FTP server for you to download.
 
 *Warning: the [dnb_formats.json](dnb_formats.json) file contains the exact structure of these files.   You may need to send these formats to DNB so they know exactly how to create them!*
 
 Loading DNB data into Senzing requires additional features and configurations. These are contained in the
-[dnb_config_updates.json](dnb_config_updates.json) file.
+[dnb_config_updates.g2c](dnb_config_updates.g2c) file.
 
 Usage:
 
@@ -25,7 +25,7 @@ usage: dnb_mapper.py [-h] [-f DNB_FORMAT] [-i INPUT_SPEC] [-o OUTPUT_PATH]
 optional arguments:
   -h, --help            show this help message and exit
   -f DNB_FORMAT, --dnb_format DNB_FORMAT
-                        choose CMPCVF, UBO, UBO-SUBJECT or GCA
+                        choose CMPCVF, GCA, UBO or UBO_ALONE
   -i INPUT_SPEC, --input_spec INPUT_SPEC
                         the name of one or more DNB files to map (place in
                         quotes if you use wild cards)
@@ -34,6 +34,11 @@ optional arguments:
   -l LOG_FILE, --log_file LOG_FILE
                         optional statistics filename (json format).
 ```
+
+*note:* The format UBO_ALONE should only be used if you are *only* loading the UBO file and wish to 
+also map the corporate hierarchy information it contains.  The most complete corporate hierarchy 
+information is contained in the CMPCVF feed and should be gotten from there if possible.
+
 
 ## Contents
 
@@ -53,7 +58,7 @@ optional arguments:
 Place the the following files on a directory of your choice ...
 
 - [dnb_mapper.py](dnb_mapper.py)
-- [dnb_config_updates.json](dnb_config_updates.json)
+- [dnb_config_updates.g2c](dnb_config_updates.g2c)
 - [dnb_formats.json](dnb_formats.json)
 
 ### Configuring Senzing
@@ -63,7 +68,7 @@ Place the the following files on a directory of your choice ...
 From the /opt/senzing/g2/python directory ...
 
 ```console
-python3 G2ConfigTool.py <path-to-file>/dnb_config_updates.json
+python3 G2ConfigTool.py <path-to-file>/dnb_config_updates.g2c
 ```
 
 This will step you through the process of adding the data sources, entity types, features, attributes and other settings needed to load this watch list data into Senzing. After each command you will see a status message saying "success" or "already exists".  For instance, if you run the script twice, the second time through they will all say "already exists" which is OK.
@@ -80,8 +85,8 @@ python3 dnb_mapper.py -f CMPCVF -i "./input/CMPCVF*.txt" -o ./output -l cmpcvf_s
 python3 dnb_mapper.py -f GCA -i "./input/GCA*.txt" -o ./output -l gca_stats.json
 
 python3 dnb_mapper.py -f UBO -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
-
-python3 dnb_mapper.py -f UBO_SUBJECT -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
+    or
+python3 dnb_mapper.py -f UBO_ALONE -i "./input/UBO*.txt" -o ./output -l ubo_stats.json
 ```
 
 The output file defaults to the same name and location as the input file and a .json extension is added.
