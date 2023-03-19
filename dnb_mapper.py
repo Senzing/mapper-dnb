@@ -328,11 +328,11 @@ def format_CMPCVF(rowData):
     if 'dunsControlStatus' in rowData and 'operatingStatus' in rowData['dunsControlStatus'] and 'description' in rowData['dunsControlStatus']['operatingStatus'] and rowData['dunsControlStatus']['operatingStatus']['description']:
         jsonData['OPERATING_STATUS'] = rowData['dunsControlStatus']['operatingStatus']['description']
         updateStat(statCategory, 'OPERATING_STATUS', jsonData['OPERATING_STATUS'])
-    if 'businessEntityType' in rowData and 'description' in rowData['businessEntityType'] and rowData['businessEntityType']['description']:
-        jsonData['BUSINESS_TYPE'] = rowData['businessEntityType']['description']
+    if 'businessRecordType' in rowData and 'description' in rowData['businessRecordType'] and rowData['businessRecordType']['description']:
+        jsonData['BUSINESS_TYPE'] = rowData['businessRecordType']['description']
         updateStat(statCategory, 'OPERATING_STATUS', jsonData['BUSINESS_TYPE'])
-    if 'legalForm' in rowData and rowData['legalForm'].get('description') and rowData['businessEntityType'].get('description'):
-        jsonData['LEGAL_FORM'] = rowData['businessEntityType'].get('description')
+    if 'legalForm' in rowData and rowData['legalForm'].get('description') and rowData['businessRecordType'].get('description'):
+        jsonData['LEGAL_FORM'] = rowData['businessRecordType'].get('description')
 
         updateStat(statCategory, 'LEGAL_FORM', jsonData['LEGAL_FORM'])
 
