@@ -211,7 +211,6 @@ def format_CMPCVF(rowData):
     jsonData = {}
     jsonData['DATA_SOURCE'] = 'DNB-COMPANY'
     jsonData['RECORD_ID'] = rowData['duns']
-    jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
 
     jsonData['DUNS_NUMBER'] = rowData['duns']
@@ -362,7 +361,7 @@ def format_CMPCVF(rowData):
                 rowData1 = rowData['corporateLinkage'][parentTag]
                 jsonData1 = {}
                 jsonData1['DATA_SOURCE'] = 'DNB-PARENT'
-                jsonData1['ENTITY_TYPE'] = 'ORGANIZATION'
+                jsonData1['RECORD_TYPE'] = 'ORGANIZATION'
                 jsonData1['RECORD_ID'] = rowData1['duns']
                 updateStat('PARENT', parentTag)
                 jsonData1['DUNS_NUMBER'] = rowData1['duns']
@@ -416,7 +415,6 @@ def format_CMPCVF(rowData):
         jsonData1 = {}
         jsonData1['DATA_SOURCE'] = 'DNB-PRINCIPLE'
         jsonData1['RECORD_ID'] = '%s-PR-%s' % (thisDuns, principleCnt)
-        jsonData1['ENTITY_TYPE'] = recordType1
         jsonData1['RECORD_TYPE'] = recordType1
 
         if fullName:
@@ -564,7 +562,6 @@ def format_GCA(rowData):
     jsonData = {}
     jsonData['DATA_SOURCE'] = 'DNB-CONTACT'
     jsonData['RECORD_ID'] = rowData['CONTACT_ID']
-    jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
 
     if rowData['INDIVIDUAL_ID']:
@@ -686,7 +683,6 @@ def format_UBO(rowData):
     jsonData['DATA_SOURCE'] = 'DNB-OWNER'
     if rowData['BENF_ID']:
         jsonData['RECORD_ID'] = '%s-%s' % (rowData['SUBJ_DUNS'], rowData['BENF_ID'])
-    jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
     updateStat('INPUT', recordType)
 
@@ -802,7 +798,6 @@ def format_UBO2(rowData, ubo_depth_cache):
     jsonData['DATA_SOURCE'] = 'DNB-OWNER'
     if rowData['BENF_ID']:
         jsonData['RECORD_ID'] = '%s-%s' % (rowData['SUBJ_DUNS'], rowData['BENF_ID'])
-    jsonData['ENTITY_TYPE'] = recordType
     jsonData['RECORD_TYPE'] = recordType
     updateStat('INPUT', recordType)
 
@@ -953,7 +948,6 @@ def format_UBO_SUBJECT(rowData, ubo_company_cache):
     jsonData['DATA_SOURCE'] = 'DNB-COMPANY'
     jsonData['RECORD_ID'] = rowData['SUBJ_DUNS']
     jsonData['DUNS_NUMBER'] = rowData['SUBJ_DUNS']
-    jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
     jsonData['RECORD_TYPE'] = 'ORGANIZATION'
     updateStat('DATA_SOURCE', 'DNB-COMPANY')
 
@@ -1000,7 +994,6 @@ def format_UBO_SUBJECT(rowData, ubo_company_cache):
         jsonData['DATA_SOURCE'] = 'DNB-PARENT'
         jsonData['RECORD_ID'] = rowData['PRNT_DUNS']
         jsonData['DUNS_NUMBER'] = rowData['PRNT_DUNS']
-        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
         jsonData['RECORD_TYPE'] = 'ORGANIZATION'
         jsonData['PRIMARY_NAME_ORG'] = rowData['PRNT_NME']
         jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
@@ -1014,7 +1007,6 @@ def format_UBO_SUBJECT(rowData, ubo_company_cache):
         jsonData['DATA_SOURCE'] = 'DNB-PARENT'
         jsonData['RECORD_ID'] = rowData['DOM_ULT_DUNS']
         jsonData['DUNS_NUMBER'] = rowData['DOM_ULT_DUNS']
-        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
         jsonData['RECORD_TYPE'] = 'ORGANIZATION'
         jsonData['PRIMARY_NAME_ORG'] = rowData['DOM_ULT_NME']
         jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
@@ -1028,7 +1020,6 @@ def format_UBO_SUBJECT(rowData, ubo_company_cache):
         jsonData['DATA_SOURCE'] = 'DNB-PARENT'
         jsonData['RECORD_ID'] = rowData['GLBL_ULT_DUNS']
         jsonData['DUNS_NUMBER'] = rowData['GLBL_ULT_DUNS']
-        jsonData['ENTITY_TYPE'] = 'ORGANIZATION'
         jsonData['RECORD_TYPE'] = 'ORGANIZATION'
         jsonData['PRIMARY_NAME_ORG'] = rowData['GLBL_ULT_NME']
         jsonData['REL_ANCHOR_DOMAIN'] = 'DUNS'
