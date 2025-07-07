@@ -35,7 +35,7 @@ optional arguments:
                         optional statistics filename (json format).
 ```
 
-_note:_ The format UBO_ALONE should only be used if you are _only_ loading the UBO file and wish to
+_note:_ The format UBO*ALONE should only be used if you are \_only* loading the UBO file and wish to
 also map the corporate hierarchy information it contains. The most complete corporate hierarchy
 information is contained in the CMPCVF feed and should be gotten from there if possible.
 
@@ -45,7 +45,7 @@ information is contained in the CMPCVF feed and should be gotten from there if p
 1. [Installation]
 1. [Configuring Senzing]
 1. [Running the mapper]
-1. [Loading into Senzing])
+1. [Loading into Senzing]
 
 ### Prerequisites
 
@@ -104,9 +104,9 @@ python3 G2Loader.py -p <name of project file>
 
 If you use the API directly, then you just need to perform an addRecord() for each line of each mapped file.
 
-[dnb_mapper.py]: dnb_mapper.py
-[dnb_formats.json]: dnb_formats.json
-[dnb_config_updates.g2c]: dnb_config_updates.g2c
+[dnb_mapper.py]: src/dnb_mapper.py
+[dnb_formats.json]: src/dnb_formats.json
+[dnb_config_updates.g2c]: src/dnb_config_updates.g2c
 [Prerequisites]: #prerequisites
 [Installation]: #installation
 [Configuring Senzing]: #configuring-senzing
